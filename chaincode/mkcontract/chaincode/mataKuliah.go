@@ -299,6 +299,28 @@ func (t *MKContract) GetMkByIdSp(ctx contractapi.TransactionContextInterface) ([
 
 
 // ============================================================================================================================
+// GetMkByIdSms - Get the Mata Kuliah (MK) stored in the world state with given IdSms.
+// Arguments - idSms
+// ============================================================================================================================
+
+func (t *MKContract) GetMkByIdSms(ctx contractapi.TransactionContextInterface) ([]*MataKuliah, error) {
+	args := ctx.GetStub().GetStringArgs()[1:]
+
+	logger.Infof("Run GetMkByIdSms function with args: %+q.", args)
+
+	if len(args) != 1 {
+		logger.Errorf(ER11, 1, len(args))
+		return nil, fmt.Errorf(ER11, 1, len(args))
+	}
+
+	idSms:= args[0]
+
+	queryString := fmt.Sprintf(`{"selector":{"idSms":"%s"}}`, idSms)
+	return getQueryResultForQueryString(ctx, queryString)
+}
+
+
+// ============================================================================================================================
 // isMkExists - Returns true when Mata Kuliah (MK) with given ID exists in world state.
 // ============================================================================================================================
 
