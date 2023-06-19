@@ -93,10 +93,10 @@ type KelasKuliah struct {
 
 
 // ============================================================================================================================
-// Struct Definitions - Full Nilai Peserta Didik (NPD) data
+// Struct Definitions - Result of Query Nilai Peserta Didik (NPD) data
 // ============================================================================================================================
 
-type NilaiPesertaDidikFull struct {
+type NilaiPesertaDidikResult struct {
 	ID      			string 						`json:"id"`
 	IdPD				string 						`json:"idPd"`
 	MK					*MataKuliah					`json:"mk"`
@@ -414,7 +414,7 @@ func (s *NPDContract) GetNpdById(ctx contractapi.TransactionContextInterface) (*
 // Arguments - idKls
 // ============================================================================================================================
 
-func (t *NPDContract) GetNpdByIdKls(ctx contractapi.TransactionContextInterface) ([]*NilaiPesertaDidik, error) {
+func (t *NPDContract) GetNpdByIdKls(ctx contractapi.TransactionContextInterface) ([]*NilaiPesertaDidikResult, error) {
 	args := ctx.GetStub().GetStringArgs()[1:]
 
 	logger.Infof("Run GetNpdByIdKls function with args: %+q.", args)
@@ -427,69 +427,39 @@ func (t *NPDContract) GetNpdByIdKls(ctx contractapi.TransactionContextInterface)
 	idKls:= args[0]
 
 	queryString := fmt.Sprintf(`{"selector":{"idKls":"%s"}}`, idKls)
-	return getQueryResultForQueryString(ctx, queryString)
-}
-
-
-// ============================================================================================================================
-// GetFullNpdByIdKls - Get the Nilai Peserta Didik (NPD) stored in the world state with given IdKls.
-// Arguments - idKls
-// ============================================================================================================================
-
-func (t *NPDContract) GetFullNpdByIdKls(ctx contractapi.TransactionContextInterface) ([]*NilaiPesertaDidikFull, error) {
-	args := ctx.GetStub().GetStringArgs()[1:]
-
-	logger.Infof("Run GetFullNpdByIdKls function with args: %+q.", args)
-
-	if len(args) != 1 {
-		logger.Errorf(ER11, 1, len(args))
-		return nil, fmt.Errorf(ER11, 1, len(args))
-	}
-
-	idKls:= args[0]
-
-	queryString := fmt.Sprintf(`{"selector":{"idKls":"%s"}}`, idKls)
-	npdResult, err := getQueryResultForQueryString(ctx, queryString)
+	queryResult, err := getQueryResultForQueryString(ctx, queryString)
 	if err != nil {
 		return nil, err
 	}
 
-	var npdList []*NilaiPesertaDidikFull
+	var npdList []*NilaiPesertaDidikResult
 
-	for _, npd := range npdResult {
-		var npdFull NilaiPesertaDidikFull
+	for _, npd := range queryResult {
+		var npdResult NilaiPesertaDidikResult
 
-		npdFull.ID = npd.ID
-		npdFull.IdPD = npd.IdPD
-		npdFull.NilaiAngka = npd.NilaiAngka
-		npdFull.NilaiHuruf = npd.NilaiHuruf
-		npdFull.NilaiIndex = npd.NilaiIndex
+		npdResult.ID = npd.ID
+		npdResult.IdPD = npd.IdPD
+		npdResult.NilaiAngka = npd.NilaiAngka
+		npdResult.NilaiHuruf = npd.NilaiHuruf
+		npdResult.NilaiIndex = npd.NilaiIndex
 
-		kls, err := getKlsById(ctx, npd.IdKLS)
-		if err != nil {
-			return nil, err
-		}
-		npdFull.KLS = kls
+		npdResult.KLS = nil
 
-		mk, err := getMkById(ctx, kls.IdMK)
-		if err != nil {
-			return nil, err
-		}
-		npdFull.MK = mk
+		npdResult.MK = nil
 
 		ptk, err := getPtkById(ctx, npd.IdPTK)
 		if err != nil {
 			return nil, err
 		}
-		npdFull.PTK = ptk
+		npdResult.PTK = ptk
 
 		txId, err := getNpdLastTxIdById(ctx, npd.ID)
 		if err != nil {
 			return nil, err
 		}
-		npdFull.LastTxId = txId
+		npdResult.LastTxId = txId
 
-		npdList = append(npdList, &npdFull)
+		npdList = append(npdList, &npdResult)
 	}
 
 	return npdList, nil
@@ -501,7 +471,7 @@ func (t *NPDContract) GetFullNpdByIdKls(ctx contractapi.TransactionContextInterf
 // Arguments - idPd
 // ============================================================================================================================
 
-func (t *NPDContract) GetNpdByIdPd(ctx contractapi.TransactionContextInterface) ([]*NilaiPesertaDidik, error) {
+func (t *NPDContract) GetNpdByIdPd(ctx contractapi.TransactionContextInterface) ([]*NilaiPesertaDidikResult, error) {
 	args := ctx.GetStub().GetStringArgs()[1:]
 
 	logger.Infof("Run GetNpdByIdPd function with args: %+q.", args)
@@ -514,70 +484,47 @@ func (t *NPDContract) GetNpdByIdPd(ctx contractapi.TransactionContextInterface) 
 	idPd:= args[0]
 
 	queryString := fmt.Sprintf(`{"selector":{"idPd":"%s"}}`, idPd)
-	return getQueryResultForQueryString(ctx, queryString)
-}
-
-
-// ============================================================================================================================
-// GetFullNpdByIdPd - Get the Nilai Peserta Didik (NPD) stored in the world state with given IdPd.
-// Arguments - idPd
-// ============================================================================================================================
-
-func (t *NPDContract) GetFullNpdByIdPd(ctx contractapi.TransactionContextInterface) ([]*NilaiPesertaDidikFull, error) {
-	args := ctx.GetStub().GetStringArgs()[1:]
-
-	logger.Infof("Run GetFullNpdByIdPd function with args: %+q.", args)
-
-	if len(args) != 1 {
-		logger.Errorf(ER11, 1, len(args))
-		return nil, fmt.Errorf(ER11, 1, len(args))
-	}
-
-	idPd:= args[0]
-
-	queryString := fmt.Sprintf(`{"selector":{"idPd":"%s"}}`, idPd)
-
-	npdResult, err := getQueryResultForQueryString(ctx, queryString)
+	queryResult, err := getQueryResultForQueryString(ctx, queryString)
 	if err != nil {
 		return nil, err
 	}
 
-	var npdList []*NilaiPesertaDidikFull
+	var npdList []*NilaiPesertaDidikResult
 
-	for _, npd := range npdResult {
-		var npdFull NilaiPesertaDidikFull
+	for _, npd := range queryResult {
+		var npdResult NilaiPesertaDidikResult
 
-		npdFull.ID = npd.ID
-		npdFull.IdPD = npd.IdPD
-		npdFull.NilaiAngka = npd.NilaiAngka
-		npdFull.NilaiHuruf = npd.NilaiHuruf
-		npdFull.NilaiIndex = npd.NilaiIndex
+		npdResult.ID = npd.ID
+		npdResult.IdPD = npd.IdPD
+		npdResult.NilaiAngka = npd.NilaiAngka
+		npdResult.NilaiHuruf = npd.NilaiHuruf
+		npdResult.NilaiIndex = npd.NilaiIndex
 
 		kls, err := getKlsById(ctx, npd.IdKLS)
 		if err != nil {
 			return nil, err
 		}
-		npdFull.KLS = kls
+		npdResult.KLS = kls
 
 		mk, err := getMkById(ctx, kls.IdMK)
 		if err != nil {
 			return nil, err
 		}
-		npdFull.MK = mk
+		npdResult.MK = mk
 
 		ptk, err := getPtkById(ctx, npd.IdPTK)
 		if err != nil {
 			return nil, err
 		}
-		npdFull.PTK = ptk
+		npdResult.PTK = ptk
 
 		txId, err := getNpdLastTxIdById(ctx, npd.ID)
 		if err != nil {
 			return nil, err
 		}
-		npdFull.LastTxId = txId
+		npdResult.LastTxId = txId
 
-		npdList = append(npdList, &npdFull)
+		npdList = append(npdList, &npdResult)
 	}
 
 	return npdList, nil
