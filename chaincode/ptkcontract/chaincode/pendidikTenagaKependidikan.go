@@ -3,6 +3,7 @@ package chaincode
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/hyperledger/fabric/common/flogging"
 	"github.com/hyperledger/fabric-chaincode-go/shim"
@@ -247,6 +248,32 @@ func (s *PTKContract) GetPtkById(ctx contractapi.TransactionContextInterface) (*
 	}
 
 	return ptk, nil
+}
+
+
+// ============================================================================================================================
+// GetPtkByIds - Get the Pendidik dan Tenaga Kependidikan (PTK) stored in the world state with given ids.
+// Arguments - IDs
+// ============================================================================================================================
+
+func (s *PTKContract) GetPtkByIds(ctx contractapi.TransactionContextInterface) ([]*PendidikTenagaKependidikan, error) {
+	args := ctx.GetStub().GetStringArgs()[1:]
+
+	logger.Infof("Run GetPtkByIds function with args: %+q.", args)
+
+	if len(args) != 1 {
+		logger.Errorf(ER11, 1, len(args))
+		return nil, fmt.Errorf(ER11, 1, len(args))
+	}
+
+	ids:= args[0]
+
+	ids = strings.Replace(ids, ",", "\",\"", -1)
+	ids = strings.Replace(ids, "[", "[\"", -1)
+	ids = strings.Replace(ids, "]", "\"]", -1)
+
+	queryString := fmt.Sprintf(`{"selector":{"id":{"$in":%s}}}`, ids)
+	return getQueryResultForQueryString(ctx, queryString)
 }
 
 
