@@ -43,7 +43,19 @@ type NilaiPesertaDidik struct {
 
 
 // ============================================================================================================================
-// Struct Definitions - PesertaDidik (PD)
+// Struct Definitions - Pendidik Tenaga Kependidikan (PTK)
+// ============================================================================================================================
+
+type PendidikTenagaKependidikan struct {
+	ID      			string `json:"id"`
+	NamaPTK				string `json:"namaPtk"`
+	NIDN				string `json:"nidn"`
+	Jabatan				string `json:"jabatan"`
+}
+
+
+// ============================================================================================================================
+// Struct Definitions - Peserta Didik (PD)
 // ============================================================================================================================
 
 type PesertaDidik struct {
@@ -55,17 +67,50 @@ type PesertaDidik struct {
 
 
 // ============================================================================================================================
-// Struct Definitions - KelasKuliah (KLS)
+// Asset Definitions - Mata Kuliah (MK)
+// ============================================================================================================================
+
+type MataKuliah struct {
+	ID      			string 	`json:"id"`
+	NamaMK				string 	`json:"namaMk"`
+	KodeMK				string 	`json:"kodeMk"`
+	SKS					int 	`json:"sks"`
+	JenjangPendidikan	string 	`json:"jenjangPendidikan"`
+}
+
+
+// ============================================================================================================================
+// Struct Definitions - Kelas Kuliah (KLS)
 // ============================================================================================================================
 
 type KelasKuliah struct {
 	ID      			string 		`json:"id"`
+	IdMK				string 		`json:"idMk"`
+	NamaKLS				string 		`json:"namaKls"`
+	Semester			string 		`json:"semester"`
 	SKS					int 		`json:"sks"`
 }
 
 
 // ============================================================================================================================
-// Error Messages
+// Struct Definitions - Full Nilai Peserta Didik (NPD) data
+// ============================================================================================================================
+
+type NilaiPesertaDidikFull struct {
+	ID      			string 						`json:"id"`
+	IdPD				string 						`json:"idPd"`
+	MK					*MataKuliah					`json:"mk"`
+	KLS					*KelasKuliah				`json:"kls"`
+	PTK					*PendidikTenagaKependidikan	`json:"ptk"`
+	NilaiAngka			float64						`json:"nilaiAngka"`
+	NilaiHuruf			string 						`json:"nilaiHuruf"`
+	NilaiIndex			float64 					`json:"nilaiIndex"`
+	LastTxId			string						`json:"lastTxId"`
+}
+
+
+// ============================================================================================================================
+// Error Message
 // ============================================================================================================================
 
 const (
@@ -90,7 +135,9 @@ const (
 
 const (
 	AcademicChannel	string = "academicchannel"
+	PTKContract 	string = "ptkcontract"
 	PDContract 		string = "pdcontract"
+	MKContract 		string = "mkcontract"
 	KLSContract 	string = "klscontract"
 )
 
@@ -385,6 +432,71 @@ func (t *NPDContract) GetNpdByIdKls(ctx contractapi.TransactionContextInterface)
 
 
 // ============================================================================================================================
+// GetFullNpdByIdKls - Get the Nilai Peserta Didik (NPD) stored in the world state with given IdKls.
+// Arguments - idKls
+// ============================================================================================================================
+
+func (t *NPDContract) GetFullNpdByIdKls(ctx contractapi.TransactionContextInterface) ([]*NilaiPesertaDidikFull, error) {
+	args := ctx.GetStub().GetStringArgs()[1:]
+
+	logger.Infof("Run GetFullNpdByIdKls function with args: %+q.", args)
+
+	if len(args) != 1 {
+		logger.Errorf(ER11, 1, len(args))
+		return nil, fmt.Errorf(ER11, 1, len(args))
+	}
+
+	idKls:= args[0]
+
+	queryString := fmt.Sprintf(`{"selector":{"idKls":"%s"}}`, idKls)
+	npdResult, err := getQueryResultForQueryString(ctx, queryString)
+	if err != nil {
+		return nil, err
+	}
+
+	var npdList []*NilaiPesertaDidikFull
+
+	for _, npd := range npdResult {
+		var npdFull NilaiPesertaDidikFull
+
+		npdFull.ID = npd.ID
+		npdFull.IdPD = npd.IdPD
+		npdFull.NilaiAngka = npd.NilaiAngka
+		npdFull.NilaiHuruf = npd.NilaiHuruf
+		npdFull.NilaiIndex = npd.NilaiIndex
+
+		kls, err := getKlsById(ctx, npd.IdKLS)
+		if err != nil {
+			return nil, err
+		}
+		npdFull.KLS = kls
+
+		mk, err := getMkById(ctx, kls.IdMK)
+		if err != nil {
+			return nil, err
+		}
+		npdFull.MK = mk
+
+		ptk, err := getPtkById(ctx, npd.IdPTK)
+		if err != nil {
+			return nil, err
+		}
+		npdFull.PTK = ptk
+
+		txId, err := getNpdLastTxIdById(ctx, npd.ID)
+		if err != nil {
+			return nil, err
+		}
+		npdFull.LastTxId = txId
+
+		npdList = append(npdList, &npdFull)
+	}
+
+	return npdList, nil
+}
+
+
+// ============================================================================================================================
 // GetNpdByIdPd - Get the Nilai Peserta Didik (NPD) stored in the world state with given IdPd.
 // Arguments - idPd
 // ============================================================================================================================
@@ -407,6 +519,72 @@ func (t *NPDContract) GetNpdByIdPd(ctx contractapi.TransactionContextInterface) 
 
 
 // ============================================================================================================================
+// GetFullNpdByIdPd - Get the Nilai Peserta Didik (NPD) stored in the world state with given IdPd.
+// Arguments - idPd
+// ============================================================================================================================
+
+func (t *NPDContract) GetFullNpdByIdPd(ctx contractapi.TransactionContextInterface) ([]*NilaiPesertaDidikFull, error) {
+	args := ctx.GetStub().GetStringArgs()[1:]
+
+	logger.Infof("Run GetFullNpdByIdPd function with args: %+q.", args)
+
+	if len(args) != 1 {
+		logger.Errorf(ER11, 1, len(args))
+		return nil, fmt.Errorf(ER11, 1, len(args))
+	}
+
+	idPd:= args[0]
+
+	queryString := fmt.Sprintf(`{"selector":{"idPd":"%s"}}`, idPd)
+
+	npdResult, err := getQueryResultForQueryString(ctx, queryString)
+	if err != nil {
+		return nil, err
+	}
+
+	var npdList []*NilaiPesertaDidikFull
+
+	for _, npd := range npdResult {
+		var npdFull NilaiPesertaDidikFull
+
+		npdFull.ID = npd.ID
+		npdFull.IdPD = npd.IdPD
+		npdFull.NilaiAngka = npd.NilaiAngka
+		npdFull.NilaiHuruf = npd.NilaiHuruf
+		npdFull.NilaiIndex = npd.NilaiIndex
+
+		kls, err := getKlsById(ctx, npd.IdKLS)
+		if err != nil {
+			return nil, err
+		}
+		npdFull.KLS = kls
+
+		mk, err := getMkById(ctx, kls.IdMK)
+		if err != nil {
+			return nil, err
+		}
+		npdFull.MK = mk
+
+		ptk, err := getPtkById(ctx, npd.IdPTK)
+		if err != nil {
+			return nil, err
+		}
+		npdFull.PTK = ptk
+
+		txId, err := getNpdLastTxIdById(ctx, npd.ID)
+		if err != nil {
+			return nil, err
+		}
+		npdFull.LastTxId = txId
+
+		npdList = append(npdList, &npdFull)
+	}
+
+	return npdList, nil
+}
+
+
+// ============================================================================================================================
 // GetNpdLastTxIdById - Get Last Tx Id of Nilai Peserta Didik (NPD) with given Id.
 // Arguments - ID
 // ============================================================================================================================
@@ -422,6 +600,29 @@ func (t *NPDContract) GetNpdLastTxIdById(ctx contractapi.TransactionContextInter
 	}
 
 	id:= args[0]
+
+	resultsIterator, err := ctx.GetStub().GetHistoryForKey(id)
+	if err != nil {
+		return "", fmt.Errorf(err.Error())
+	}
+	defer resultsIterator.Close()
+
+	response, err := resultsIterator.Next()
+	if err != nil {
+		return "", fmt.Errorf(err.Error())
+	}
+
+	return response.TxId, nil
+}
+
+
+// ============================================================================================================================
+// getNpdLastTxIdById - Get Last Tx Id of Nilai Peserta Didik (NPD) with given Id.
+// Arguments - ID
+// ============================================================================================================================
+
+func getNpdLastTxIdById(ctx contractapi.TransactionContextInterface, id string) (string, error) {
+	logger.Infof("Run getNpdLastTxIdById function with id: '%s'.", id)
 
 	resultsIterator, err := ctx.GetStub().GetHistoryForKey(id)
 	if err != nil {
@@ -481,6 +682,34 @@ func getNpdStateById(ctx contractapi.TransactionContextInterface, id string) (*N
 
 
 // ============================================================================================================================
+// getMkById - Get MK with given idMk.
+// ============================================================================================================================
+
+func getMkById(ctx contractapi.TransactionContextInterface, idMk string) (*MataKuliah, error) {
+	logger.Infof("Run getMkById function with idMk: '%s'.", idMk)
+
+	params := []string{"GetMkById", idMk}
+	queryArgs := make([][]byte, len(params))
+	for i, arg := range params {
+		queryArgs[i] = []byte(arg)
+	}
+
+	response := ctx.GetStub().InvokeChaincode(MKContract, queryArgs, AcademicChannel)
+	if response.Status != shim.OK {
+		return nil, fmt.Errorf(ER37, MKContract, response.Message)
+	}
+
+	var kls MataKuliah
+	err := json.Unmarshal([]byte(response.Payload), &kls)
+	if err != nil {
+		return nil, fmt.Errorf(ER34, err)
+	}
+
+	return &kls, nil
+}
+
+
+// ============================================================================================================================
 // getKlsById - Get KLS with given idKls.
 // ============================================================================================================================
 
@@ -495,7 +724,7 @@ func getKlsById(ctx contractapi.TransactionContextInterface, idKls string) (*Kel
 
 	response := ctx.GetStub().InvokeChaincode(KLSContract, queryArgs, AcademicChannel)
 	if response.Status != shim.OK {
-		return nil, fmt.Errorf(ER37, KLSContract, response.Payload)
+		return nil, fmt.Errorf(ER37, KLSContract, response.Message)
 	}
 
 	var kls KelasKuliah
@@ -505,6 +734,34 @@ func getKlsById(ctx contractapi.TransactionContextInterface, idKls string) (*Kel
 	}
 
 	return &kls, nil
+}
+
+
+// ============================================================================================================================
+// getPtkById - Get PTK with given idPtk.
+// ============================================================================================================================
+
+func getPtkById(ctx contractapi.TransactionContextInterface, idPtk string) (*PendidikTenagaKependidikan, error) {
+	logger.Infof("Run getPtkById function with idPtk: '%s'.", idPtk)
+
+	params := []string{"GetPtkById", idPtk}
+	queryArgs := make([][]byte, len(params))
+	for i, arg := range params {
+		queryArgs[i] = []byte(arg)
+	}
+
+	response := ctx.GetStub().InvokeChaincode(PTKContract, queryArgs, AcademicChannel)
+	if response.Status != shim.OK {
+		return nil, fmt.Errorf(ER37, PTKContract, response.Message)
+	}
+
+	var ptk PendidikTenagaKependidikan
+	err := json.Unmarshal([]byte(response.Payload), &ptk)
+	if err != nil {
+		return nil, fmt.Errorf(ER34, err)
+	}
+
+	return &ptk, nil
 }
 
 
@@ -523,7 +780,7 @@ func getPdById(ctx contractapi.TransactionContextInterface, idPd string) (*Peser
 
 	response := ctx.GetStub().InvokeChaincode(PDContract, queryArgs, AcademicChannel)
 	if response.Status != shim.OK {
-		return nil, fmt.Errorf(ER37, PDContract, response.Payload)
+		return nil, fmt.Errorf(ER37, PDContract, response.Message)
 	}
 
 	var pd PesertaDidik
@@ -551,7 +808,7 @@ func updatePdRecord(ctx contractapi.TransactionContextInterface, idPd string, to
 
 	response := ctx.GetStub().InvokeChaincode(PDContract, invokeArgs, AcademicChannel)
 	if response.Status != shim.OK {
-		return fmt.Errorf(ER37, PDContract, response.Payload)
+		return fmt.Errorf(ER37, PDContract, response.Message)
 	}
 
 	return nil
