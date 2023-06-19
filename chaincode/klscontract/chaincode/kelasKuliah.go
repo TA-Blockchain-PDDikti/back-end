@@ -71,10 +71,10 @@ type PesertaDidik struct {
 
 
 // ============================================================================================================================
-// Struct Definitions - Full Kelas Kuliah (KLS) data
+// Struct Definitions - Result of Query Kelas Kuliah (KLS) data
 // ============================================================================================================================
 
-type KelasKuliahFull struct {
+type KelasKuliahResult struct {
 	ID      			string 							`json:"id"`
 	IdSMS				string 							`json:"idSms"`
 	IdMK				string 							`json:"idMk"`
@@ -385,7 +385,7 @@ func (s *KLSContract) GetAllKls(ctx contractapi.TransactionContextInterface) ([]
 // Arguments - ID
 // ============================================================================================================================
 
-func (s *KLSContract) GetKlsById(ctx contractapi.TransactionContextInterface) (*KelasKuliah, error) {
+func (s *KLSContract) GetKlsById(ctx contractapi.TransactionContextInterface) (*KelasKuliahResult, error) {
 	args := ctx.GetStub().GetStringArgs()[1:]
 
 	logger.Infof("Run GetKlsById function with args: %+q.", args)
@@ -402,49 +402,23 @@ func (s *KLSContract) GetKlsById(ctx contractapi.TransactionContextInterface) (*
 		return nil, err
 	}
 
-	return kls, nil
-}
+	var klsResult KelasKuliahResult
 
-
-// ============================================================================================================================
-// GetFullKlsById - Get the Kelas Kuliah (KLS) stored in the world state with given id.
-// Arguments - ID
-// ============================================================================================================================
-
-func (s *KLSContract) GetFullKlsById(ctx contractapi.TransactionContextInterface) (*KelasKuliahFull, error) {
-	args := ctx.GetStub().GetStringArgs()[1:]
-
-	logger.Infof("Run GetFullKlsById function with args: %+q.", args)
-
-	if len(args) != 1 {
-		logger.Errorf(ER11, 1, len(args))
-		return nil, fmt.Errorf(ER11, 1, len(args))
-	}
-
-	id:= args[0]
-
-	kls, err := getKlsStateById(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-
-	var klsFull KelasKuliahFull
-
-	klsFull.ID = kls.ID
-	klsFull.IdSMS = kls.IdSMS
-	klsFull.IdMK = kls.IdMK
-	klsFull.NamaKLS = kls.NamaKLS
-	klsFull.Semester = kls.Semester
-	klsFull.SKS = kls.SKS
+	klsResult.ID = kls.ID
+	klsResult.IdSMS = kls.IdSMS
+	klsResult.IdMK = kls.IdMK
+	klsResult.NamaKLS = kls.NamaKLS
+	klsResult.Semester = kls.Semester
+	klsResult.SKS = kls.SKS
 
 	if len(kls.ListPTK) != 0 {
 		listPtk, err := getPtkByIds(ctx, "[" + strings.Join(kls.ListPTK, ",") + "]")
 			if err != nil {
 				return nil, err
 			}
-		klsFull.ListPTK = listPtk
+		klsResult.ListPTK = listPtk
 	} else {
-		klsFull.ListPTK = []PendidikTenagaKependidikan{}
+		klsResult.ListPTK = []PendidikTenagaKependidikan{}
 	}
 
 	if len(kls.ListPD) != 0 {
@@ -452,12 +426,12 @@ func (s *KLSContract) GetFullKlsById(ctx contractapi.TransactionContextInterface
 			if err != nil {
 				return nil, err
 			}
-		klsFull.ListPD = listPd
+		klsResult.ListPD = listPd
 	} else {
-		klsFull.ListPD = []PesertaDidik{}
+		klsResult.ListPD = []PesertaDidik{}
 	}
 
-	return &klsFull, nil
+	return &klsResult, nil
 }
 
 
