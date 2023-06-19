@@ -409,6 +409,32 @@ func (s *PDContract) GetPdById(ctx contractapi.TransactionContextInterface) (*Pe
 
 
 // ============================================================================================================================
+// GetPdByIds - Get the Peserta Didik (PD) stored in the world state with given ids.
+// Arguments - IDs
+// ============================================================================================================================
+
+func (s *PDContract) GetPdByIds(ctx contractapi.TransactionContextInterface) ([]*PesertaDidik, error) {
+	args := ctx.GetStub().GetStringArgs()[1:]
+
+	logger.Infof("Run GetPdByIds function with args: %+q.", args)
+
+	if len(args) != 1 {
+		logger.Errorf(ER11, 1, len(args))
+		return nil, fmt.Errorf(ER11, 1, len(args))
+	}
+
+	ids:= args[0]
+
+	ids = strings.Replace(ids, ",", "\",\"", -1)
+	ids = strings.Replace(ids, "[", "[\"", -1)
+	ids = strings.Replace(ids, "]", "\"]", -1)
+
+	queryString := fmt.Sprintf(`{"selector":{"id":{"$in":%s}}}`, ids)
+	return getQueryResultForQueryString(ctx, queryString)
+}
+
+
+// ============================================================================================================================
 // GetPdByIdSp - Get the Peserta Didik (PD) stored in the world state with given IdSp.
 // Arguments - idSp
 // ============================================================================================================================
