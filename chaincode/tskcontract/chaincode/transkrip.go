@@ -36,7 +36,7 @@ type Transkrip struct {
 	IdSMS				string 			`json:"idSms"`
 	IdPD				string 			`json:"idPd"`
 	JenjangPendidikan	string 			`json:"jenjangPendidikan"`
-	TotalMutu			int 			`json:"totalMutu"`
+	TotalMutu			float64			`json:"totalMutu"`
 	TotalSKS			int 			`json:"totalSks"`
 	IPK					float64			`json:"ipk"`
 	RemainingApprover	int 			`json:"remainingApprover"`
@@ -100,7 +100,7 @@ type TranskripResult struct {
 	SMS					*SatuanManagemenSumberdaya 		`json:"sms"`
 	PD					*PesertaDidik					`json:"pd"`
 	JenjangPendidikan	string 							`json:"jenjangPendidikan"`
-	TotalMutu			int 							`json:"totalMutu"`
+	TotalMutu			float64							`json:"totalMutu"`
 	TotalSKS			int 							`json:"totalSks"`
 	IPK					float64							`json:"ipk"`
 	RemainingApprover	int 							`json:"remainingApprover"`
@@ -184,7 +184,7 @@ func (s *TSKContract) CreateTsk (ctx contractapi.TransactionContextInterface) er
 		return fmt.Errorf(ER36, id)
 	}
 
-	totalMutu, err := strconv.Atoi(totalMutuStr)
+	totalMutu, err := strconv.ParseFloat(totalMutuStr, 64)
 	if err != nil {
 		logger.Errorf(ER35, id)
 		return fmt.Errorf(ER35, id)
@@ -266,7 +266,7 @@ func (s *TSKContract) UpdateTsk (ctx contractapi.TransactionContextInterface) er
 		return fmt.Errorf(ER36, id)
 	}
 
-	totalMutu, err := strconv.Atoi(totalMutuStr)
+	totalMutu, err := strconv.ParseFloat(totalMutuStr, 64)
 	if err != nil {
 		logger.Errorf(ER35, id)
 		return fmt.Errorf(ER35, id)
