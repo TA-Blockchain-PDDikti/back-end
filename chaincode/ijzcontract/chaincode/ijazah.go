@@ -43,12 +43,66 @@ type Ijazah struct {
 
 
 // ============================================================================================================================
-// Struct Definitions - SatuanManagemenSumberdaya (SMS)
+// Struct Definitions - Satuan Pendidikan (SP)
+// ============================================================================================================================
+
+type SatuanPendidikan struct {
+	ID      		string `json:"id"`
+	NamaSP			string `json:"namaSp"`
+}
+
+
+// ============================================================================================================================
+// Struct Definitions - Satuan Managemen Sumberdaya (SMS)
 // ============================================================================================================================
 
 type SatuanManagemenSumberdaya struct {
-	ApproversTSK			[]string 	`json:"approversTsk"`
-	ApproversIJZ			[]string 	`json:"approversIjz"`
+	ID      			string 		`json:"id"`
+	NamaSMS				string 		`json:"namaSms"`
+	JenjangPendidikan	string 		`json:"jenjangPendidikan"`
+	ApproversTSK		[]string 	`json:"approversTsk"`
+	ApproversIJZ		[]string 	`json:"approversIjz"`
+}
+
+
+// ============================================================================================================================
+// Struct Definitions - Pendidik Tenaga Kependidikan (PTK)
+// ============================================================================================================================
+
+type PendidikTenagaKependidikan struct {
+	ID      			string `json:"id"`
+	NamaPTK				string `json:"namaPtk"`
+	NIDN				string `json:"nidn"`
+	Jabatan				string `json:"jabatan"`
+}
+
+
+// ============================================================================================================================
+// Struct Definitions - Peserta Didik (PD)
+// ============================================================================================================================
+
+type PesertaDidik struct {
+	ID      			string 	`json:"id"`
+	NamaPD				string 	`json:"namaPd"`
+	NIPD				string 	`json:"nipd"`
+}
+
+
+// ============================================================================================================================
+// Struct Definitions - Result of Query Ijazah Mahasiswa (IJZ) data
+// ============================================================================================================================
+
+type IjazahResult struct {
+	ID      			string 							`json:"id"`
+	SP					*SatuanPendidikan 				`json:"sp"`
+	SMS					*SatuanManagemenSumberdaya 		`json:"sms"`
+	PD					*PesertaDidik					`json:"pd"`
+	JenjangPendidikan	string 							`json:"jenjangPendidikan"`
+	NomorIjazah			string 							`json:"nomorIjazah"`
+	TanggalLulus		string 							`json:"tanggalLulus"`
+	RemainingApprover	int 							`json:"remainingApprover"`
+	Approvers			[]*PendidikTenagaKependidikan	`json:"Approvers"`
+	ApprovalTxId		[]string						`json:"approvalTxId"`
 }
 
 
@@ -81,7 +135,10 @@ const (
 
 const (
 	AcademicChannel	string = "academicchannel"
+	SPContract 		string = "spcontract"
 	SMSContract 	string = "smscontract"
+	PTKContract 	string = "ptkcontract"
+	PDContract 		string = "pdcontract"
 )
 
 
@@ -339,7 +396,7 @@ func (s *IJZContract) GetAllIjz(ctx contractapi.TransactionContextInterface) ([]
 // Arguments - ID
 // ============================================================================================================================
 
-func (s *IJZContract) GetIjzById (ctx contractapi.TransactionContextInterface) (*Ijazah, error) {
+func (s *IJZContract) GetIjzById (ctx contractapi.TransactionContextInterface) (*IjazahResult, error) {
 	args := ctx.GetStub().GetStringArgs()[1:]
 
 	logger.Infof("Run GetIjzById function with args: %+q.", args)
@@ -356,7 +413,12 @@ func (s *IJZContract) GetIjzById (ctx contractapi.TransactionContextInterface) (
 		return nil, err
 	}
 
-	return ijz, nil
+	ijzResult, err := getCompleteDataIjz(ctx, ijz)
+	if err != nil {
+		return nil, err
+	}
+
+	return ijzResult, nil
 }
 
 
@@ -365,7 +427,7 @@ func (s *IJZContract) GetIjzById (ctx contractapi.TransactionContextInterface) (
 // Arguments - idSp
 // ============================================================================================================================
 
-func (t *IJZContract) GetIjzByIdSp(ctx contractapi.TransactionContextInterface) ([]*Ijazah, error) {
+func (t *IJZContract) GetIjzByIdSp(ctx contractapi.TransactionContextInterface) ([]*IjazahResult, error) {
 	args := ctx.GetStub().GetStringArgs()[1:]
 
 	logger.Infof("Run GetIjzByIdSp function with args: %+q.", args)
@@ -378,7 +440,23 @@ func (t *IJZContract) GetIjzByIdSp(ctx contractapi.TransactionContextInterface) 
 	idSp:= args[0]
 
 	queryString := fmt.Sprintf(`{"selector":{"idSp":"%s"}}`, idSp)
-	return getQueryResultForQueryString(ctx, queryString)
+	queryResult, err := getQueryResultForQueryString(ctx, queryString)
+	if err != nil {
+		return nil, err
+	}
+
+	var ijzList []*IjazahResult
+
+	for _, ijz := range queryResult {
+		ijzResult, err := getCompleteDataIjz(ctx, ijz)
+		if err != nil {
+			return nil, err
+		}
+
+		ijzList = append(ijzList, ijzResult)
+	}
+
+	return ijzList, nil
 }
 
 // ============================================================================================================================
@@ -386,7 +464,7 @@ func (t *IJZContract) GetIjzByIdSp(ctx contractapi.TransactionContextInterface) 
 // Arguments - idSms
 // ============================================================================================================================
 
-func (t *IJZContract) GetIjzByIdSms(ctx contractapi.TransactionContextInterface) ([]*Ijazah, error) {
+func (t *IJZContract) GetIjzByIdSms(ctx contractapi.TransactionContextInterface) ([]*IjazahResult, error) {
 	args := ctx.GetStub().GetStringArgs()[1:]
 
 	logger.Infof("Run GetIjzByIdSms function with args: %+q.", args)
@@ -399,7 +477,23 @@ func (t *IJZContract) GetIjzByIdSms(ctx contractapi.TransactionContextInterface)
 	idSms:= args[0]
 
 	queryString := fmt.Sprintf(`{"selector":{"idSms":"%s"}}`, idSms)
-	return getQueryResultForQueryString(ctx, queryString)
+	queryResult, err := getQueryResultForQueryString(ctx, queryString)
+	if err != nil {
+		return nil, err
+	}
+
+	var ijzList []*IjazahResult
+
+	for _, ijz := range queryResult {
+		ijzResult, err := getCompleteDataIjz(ctx, ijz)
+		if err != nil {
+			return nil, err
+		}
+
+		ijzList = append(ijzList, ijzResult)
+	}
+
+	return ijzList, nil
 }
 
 
@@ -408,7 +502,7 @@ func (t *IJZContract) GetIjzByIdSms(ctx contractapi.TransactionContextInterface)
 // Arguments - idPd
 // ============================================================================================================================
 
-func (t *IJZContract) GetIjzByIdPd(ctx contractapi.TransactionContextInterface) ([]*Ijazah, error) {
+func (t *IJZContract) GetIjzByIdPd(ctx contractapi.TransactionContextInterface) ([]*IjazahResult, error) {
 	args := ctx.GetStub().GetStringArgs()[1:]
 
 	logger.Infof("Run GetIjzByIdPd function with args: %+q.", args)
@@ -421,19 +515,35 @@ func (t *IJZContract) GetIjzByIdPd(ctx contractapi.TransactionContextInterface) 
 	idPd:= args[0]
 
 	queryString := fmt.Sprintf(`{"selector":{"idPd":"%s"}}`, idPd)
-	return getQueryResultForQueryString(ctx, queryString)
+	queryResult, err := getQueryResultForQueryString(ctx, queryString)
+	if err != nil {
+		return nil, err
+	}
+
+	var ijzList []*IjazahResult
+
+	for _, ijz := range queryResult {
+		ijzResult, err := getCompleteDataIjz(ctx, ijz)
+		if err != nil {
+			return nil, err
+		}
+
+		ijzList = append(ijzList, ijzResult)
+	}
+
+	return ijzList, nil
 }
 
 
 // ============================================================================================================================
-// GetIjzLastTxIdById - Get the Ijazah Mahasiswa (IJZ) stored in the world state with given IdPd.
+// GetIjzAddApprovalTxIdById - Get the Ijazah Mahasiswa (IJZ) stored in the world state with given IdPd.
 // Arguments - idPd
 // ============================================================================================================================
 
 func (t *IJZContract) GetIjzAddApprovalTxIdById(ctx contractapi.TransactionContextInterface) ([]string, error) {
 	args := ctx.GetStub().GetStringArgs()[1:]
 
-	logger.Infof("Run GetIjzLastTxIdById function with args: %+q.", args)
+	logger.Infof("Run GetIjzAddApprovalTxIdById function with args: %+q.", args)
 
 	if len(args) != 1 {
 		logger.Errorf(ER11, 1, len(args))
@@ -540,6 +650,219 @@ func getSmsApproverIjz(ctx contractapi.TransactionContextInterface, idSms string
 	}
 
 	return sms.ApproversIJZ, nil
+}
+
+
+// ============================================================================================================================
+// getSpById - Get SP with given idSp.
+// ============================================================================================================================
+
+func getSpById(ctx contractapi.TransactionContextInterface, idSp string) (*SatuanPendidikan, error) {
+	logger.Infof("Run getSpById function with idSp: '%s'.", idSp)
+
+	params := []string{"GetSpById", idSp}
+	queryArgs := make([][]byte, len(params))
+	for i, arg := range params {
+		queryArgs[i] = []byte(arg)
+	}
+
+	response := ctx.GetStub().InvokeChaincode(SPContract, queryArgs, AcademicChannel)
+	if response.Status != shim.OK {
+		return nil, fmt.Errorf(ER37, SPContract, response.Message)
+	}
+
+	var sp SatuanPendidikan
+	err := json.Unmarshal([]byte(response.Payload), &sp)
+	if err != nil {
+		return nil, fmt.Errorf(ER34, err)
+	}
+
+	return &sp, nil
+}
+
+
+// ============================================================================================================================
+// getSmsById - Get SMS with given idSms.
+// ============================================================================================================================
+
+func getSmsById(ctx contractapi.TransactionContextInterface, idSms string) (*SatuanManagemenSumberdaya, error) {
+	logger.Infof("Run getSmsById function with idSms: '%s'.", idSms)
+
+	params := []string{"GetSmsById", idSms}
+	queryArgs := make([][]byte, len(params))
+	for i, arg := range params {
+		queryArgs[i] = []byte(arg)
+	}
+
+	response := ctx.GetStub().InvokeChaincode(SMSContract, queryArgs, AcademicChannel)
+	if response.Status != shim.OK {
+		return nil, fmt.Errorf(ER37, SMSContract, response.Message)
+	}
+
+	var sms SatuanManagemenSumberdaya
+	err := json.Unmarshal([]byte(response.Payload), &sms)
+	if err != nil {
+		return nil, fmt.Errorf(ER34, err)
+	}
+
+	return &sms, nil
+}
+
+
+// ============================================================================================================================
+// getPtkById - Get PTK with given idPtk.
+// ============================================================================================================================
+
+func getPtkById(ctx contractapi.TransactionContextInterface, idPtk string) (*PendidikTenagaKependidikan, error) {
+	logger.Infof("Run getPtkById function with idPtk: '%s'.", idPtk)
+
+	params := []string{"GetPtkById", idPtk}
+	queryArgs := make([][]byte, len(params))
+	for i, arg := range params {
+		queryArgs[i] = []byte(arg)
+	}
+
+	response := ctx.GetStub().InvokeChaincode(PTKContract, queryArgs, AcademicChannel)
+	logger.Infof("Response Payload: '%+q'.", response.Payload)
+	if response.Status != shim.OK {
+		return nil, fmt.Errorf(ER37, PTKContract, response.Message)
+	}
+
+	var ptk PendidikTenagaKependidikan
+	err := json.Unmarshal([]byte(response.Payload), &ptk)
+	if err != nil {
+		return nil, fmt.Errorf(ER34, err)
+	}
+
+	return &ptk, nil
+}
+
+
+// ============================================================================================================================
+// getPdById - Get PD with given idPd.
+// ============================================================================================================================
+
+func getPdById(ctx contractapi.TransactionContextInterface, idPd string) (*PesertaDidik, error) {
+	logger.Infof("Run getPdById function with idPd: '%s'.", idPd)
+
+	params := []string{"GetPdById", idPd}
+	queryArgs := make([][]byte, len(params))
+	for i, arg := range params {
+		queryArgs[i] = []byte(arg)
+	}
+
+	response := ctx.GetStub().InvokeChaincode(PDContract, queryArgs, AcademicChannel)
+	if response.Status != shim.OK {
+		return nil, fmt.Errorf(ER37, PDContract, response.Message)
+	}
+
+	var pd PesertaDidik
+	err := json.Unmarshal([]byte(response.Payload), &pd)
+	if err != nil {
+		return nil, fmt.Errorf(ER34, err)
+	}
+
+	return &pd, nil
+}
+
+
+// ============================================================================================================================
+// getIjzAddApprovalTxIdById - Get the Ijazah Mahasiswa (IJZ) Approval Tx Id with given ID.
+// ============================================================================================================================
+
+func getIjzAddApprovalTxIdById(ctx contractapi.TransactionContextInterface, id string) ([]string, error) {
+	logger.Infof("Run getIjzAddApprovalTxIdById function with id: %s.", id)
+
+	resultsIterator, err := ctx.GetStub().GetHistoryForKey(id)
+	if err != nil {
+		return []string{}, fmt.Errorf(err.Error())
+	}
+	defer resultsIterator.Close()
+
+	txIdList := []string{}
+
+	for resultsIterator.HasNext() {
+		response, err := resultsIterator.Next()
+		if err != nil {
+			return []string{}, fmt.Errorf(err.Error())
+		}
+
+		var ijz Ijazah
+		err = json.Unmarshal([]byte(response.Value), &ijz)
+		if err != nil {
+			return nil, fmt.Errorf(ER34, err)
+		}
+
+		if (len(ijz.Approvers) == 0) {
+			break
+		}
+
+		txIdList = append([]string{response.TxId}, txIdList[0:]...)
+	}
+
+	return txIdList, nil
+}
+
+
+// ============================================================================================================================
+// getCompleteDataIjz - Get Complete the Ijazah Mahasiswa (IJZ).
+// ============================================================================================================================
+
+func getCompleteDataIjz(ctx contractapi.TransactionContextInterface, ijz *Ijazah) (*IjazahResult, error) {
+	logger.Infof("Run getCompleteDataIjz function with ijz id: '%s'.", ijz.ID)
+
+	var ijzResult IjazahResult
+
+	ijzResult.ID 				= ijz.ID
+	ijzResult.JenjangPendidikan = ijz.JenjangPendidikan
+	ijzResult.NomorIjazah 		= ijz.NomorIjazah
+	ijzResult.TanggalLulus 		= ijz.TanggalLulus
+	ijzResult.RemainingApprover = ijz.RemainingApprover
+
+	sp, err := getSpById(ctx, ijz.IdSP)
+	if err != nil {
+		return nil, err
+	}
+	ijzResult.SP = sp
+
+	sms, err := getSmsById(ctx, ijz.IdSMS)
+	if err != nil {
+		return nil, err
+	}
+	sms.ApproversTSK = []string{}
+	sms.ApproversIJZ = []string{}
+	ijzResult.SMS = sms
+
+	pd, err := getPdById(ctx, ijz.IdPD)
+	if err != nil {
+		return nil, err
+	}
+	ijzResult.PD = pd
+
+	if len(ijz.Approvers) != 0 {
+		var listPtk []*PendidikTenagaKependidikan
+
+		for _, ptkId := range ijz.Approvers {
+			ptk, err := getPtkById(ctx, ptkId)
+			if err != nil {
+				return nil, err
+			}
+
+			listPtk = append(listPtk, ptk)
+		}
+
+		ijzResult.Approvers = listPtk
+	} else {
+		ijzResult.Approvers = []*PendidikTenagaKependidikan{}
+	}
+
+	approvalTxIds, err := getIjzAddApprovalTxIdById(ctx, ijz.ID)
+	if err != nil {
+		return nil, err
+	}
+	ijzResult.ApprovalTxId = approvalTxIds
+
+	return &ijzResult, nil
 }
 
 
