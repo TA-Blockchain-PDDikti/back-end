@@ -60,6 +60,8 @@ type PendidikTenagaKependidikan struct {
 
 type PesertaDidik struct {
 	ID      			string 	`json:"id"`
+	NamaPD				string 	`json:"namaPd"`
+	NIPD				string 	`json:"nipd"`
 	TotalMutu			float64	`json:"totalMutu"`
 	TotalSKS			int 	`json:"totalSks"`
 	IPK					float64	`json:"ipk"`
@@ -85,7 +87,7 @@ type MataKuliah struct {
 
 type KelasKuliah struct {
 	ID      			string 		`json:"id"`
-	IdMK				string 		`json:"idMk"`
+	MK					*MataKuliah	`json:"mk"`
 	NamaKLS				string 		`json:"namaKls"`
 	Semester			string 		`json:"semester"`
 	SKS					int 		`json:"sks"`
@@ -98,7 +100,7 @@ type KelasKuliah struct {
 
 type NilaiPesertaDidikResult struct {
 	ID      			string 						`json:"id"`
-	IdPD				string 						`json:"idPd"`
+	PD					*PesertaDidik				`json:"pd"`
 	MK					*MataKuliah					`json:"mk"`
 	KLS					*KelasKuliah				`json:"kls"`
 	PTK					*PendidikTenagaKependidikan	`json:"ptk"`
@@ -405,6 +407,44 @@ func (s *NPDContract) GetNpdById(ctx contractapi.TransactionContextInterface) (*
 		return nil, err
 	}
 
+	var npdResult NilaiPesertaDidikResult
+
+	npdResult.ID = npd.ID
+
+	npdResult.NilaiAngka = npd.NilaiAngka
+	npdResult.NilaiHuruf = npd.NilaiHuruf
+	npdResult.NilaiIndex = npd.NilaiIndex
+
+	kls, err := getKlsById(ctx, npd.IdKLS)
+	if err != nil {
+		return nil, err
+	}
+	npdResult.KLS = kls
+
+	mk, err := getMkById(ctx, kls.MK.ID)
+	if err != nil {
+		return nil, err
+	}
+	npdResult.MK = mk
+
+	ptk, err := getPtkById(ctx, npd.IdPTK)
+	if err != nil {
+		return nil, err
+	}
+	npdResult.PTK = ptk
+
+	pd, err := getPdById(ctx, npd.IdPD)
+	if err != nil {
+		return nil, err
+	}
+	npdResult.PD = pd
+
+	txId, err := getNpdLastTxIdById(ctx, npd.ID)
+	if err != nil {
+		return nil, err
+	}
+	npdResult.LastTxId = txId
+
 	return npd, nil
 }
 
@@ -438,12 +478,16 @@ func (t *NPDContract) GetNpdByIdKls(ctx contractapi.TransactionContextInterface)
 		var npdResult NilaiPesertaDidikResult
 
 		npdResult.ID = npd.ID
-		npdResult.IdPD = npd.IdPD
+
+		npdResult.PD = new(PesertaDidik)
+		npdResult.PD.ID = npd.IdPD
+
 		npdResult.NilaiAngka = npd.NilaiAngka
 		npdResult.NilaiHuruf = npd.NilaiHuruf
 		npdResult.NilaiIndex = npd.NilaiIndex
 
-		npdResult.KLS = nil
+		npdResult.KLS = new(KelasKuliah)
+		npdResult.KLS.ID = npd.IdKLS
 
 		npdResult.MK = nil
 
@@ -495,7 +539,10 @@ func (t *NPDContract) GetNpdByIdPd(ctx contractapi.TransactionContextInterface) 
 		var npdResult NilaiPesertaDidikResult
 
 		npdResult.ID = npd.ID
-		npdResult.IdPD = npd.IdPD
+
+		npdResult.PD = new(PesertaDidik)
+		npdResult.PD.ID = npd.IdPD
+
 		npdResult.NilaiAngka = npd.NilaiAngka
 		npdResult.NilaiHuruf = npd.NilaiHuruf
 		npdResult.NilaiIndex = npd.NilaiIndex
@@ -506,7 +553,7 @@ func (t *NPDContract) GetNpdByIdPd(ctx contractapi.TransactionContextInterface) 
 		}
 		npdResult.KLS = kls
 
-		mk, err := getMkById(ctx, kls.IdMK)
+		mk, err := getMkById(ctx, kls.MK.ID)
 		if err != nil {
 			return nil, err
 		}
