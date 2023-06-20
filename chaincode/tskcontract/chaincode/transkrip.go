@@ -45,12 +45,67 @@ type Transkrip struct {
 
 
 // ============================================================================================================================
-// Struct Definitions - SatuanManagemenSumberdaya (SMS)
+// Struct Definitions - Satuan Pendidikan (SP)
+// ============================================================================================================================
+
+type SatuanPendidikan struct {
+	ID      		string `json:"id"`
+	NamaSP			string `json:"namaSp"`
+}
+
+
+// ============================================================================================================================
+// Struct Definitions - Satuan Managemen Sumberdaya (SMS)
 // ============================================================================================================================
 
 type SatuanManagemenSumberdaya struct {
-	ApproversTSK			[]string 	`json:"approversTsk"`
-	ApproversIJZ			[]string 	`json:"approversIjz"`
+	ID      			string 		`json:"id"`
+	NamaSMS				string 		`json:"namaSms"`
+	JenjangPendidikan	string 		`json:"jenjangPendidikan"`
+	ApproversTSK		[]string 	`json:"approversTsk"`
+	ApproversIJZ		[]string 	`json:"approversIjz"`
+}
+
+
+// ============================================================================================================================
+// Struct Definitions - Pendidik Tenaga Kependidikan (PTK)
+// ============================================================================================================================
+
+type PendidikTenagaKependidikan struct {
+	ID      			string `json:"id"`
+	NamaPTK				string `json:"namaPtk"`
+	NIDN				string `json:"nidn"`
+	Jabatan				string `json:"jabatan"`
+}
+
+
+// ============================================================================================================================
+// Struct Definitions - Peserta Didik (PD)
+// ============================================================================================================================
+
+type PesertaDidik struct {
+	ID      			string 	`json:"id"`
+	NamaPD				string 	`json:"namaPd"`
+	NIPD				string 	`json:"nipd"`
+}
+
+
+// ============================================================================================================================
+// Struct Definitions - Result of Query Transkrip Mahasiswa (TSK) data
+// ============================================================================================================================
+
+type TranskripResult struct {
+	ID      			string 							`json:"id"`
+	SP					*SatuanPendidikan 				`json:"sp"`
+	SMS					*SatuanManagemenSumberdaya 		`json:"sms"`
+	PD					*PesertaDidik					`json:"pd"`
+	JenjangPendidikan	string 							`json:"jenjangPendidikan"`
+	TotalMutu			int 							`json:"totalMutu"`
+	TotalSKS			int 							`json:"totalSks"`
+	IPK					float64							`json:"ipk"`
+	RemainingApprover	int 							`json:"remainingApprover"`
+	Approvers			[]*PendidikTenagaKependidikan	`json:"Approvers"`
+	ApprovalTxId		[]string						`json:"approvalTxId"`
 }
 
 
@@ -83,7 +138,10 @@ const (
 
 const (
 	AcademicChannel	string = "academicchannel"
+	SPContract 		string = "spcontract"
 	SMSContract 	string = "smscontract"
+	PTKContract 	string = "ptkcontract"
+	PDContract 		string = "pdcontract"
 )
 
 
@@ -381,7 +439,7 @@ func (s *TSKContract) GetAllTsk(ctx contractapi.TransactionContextInterface) ([]
 // Arguments - ID
 // ============================================================================================================================
 
-func (s *TSKContract) GetTskById (ctx contractapi.TransactionContextInterface) (*Transkrip, error) {
+func (s *TSKContract) GetTskById (ctx contractapi.TransactionContextInterface) (*TranskripResult, error) {
 	args := ctx.GetStub().GetStringArgs()[1:]
 
 	logger.Infof("Run GetTskById function with args: %+q.", args)
@@ -398,7 +456,12 @@ func (s *TSKContract) GetTskById (ctx contractapi.TransactionContextInterface) (
 		return nil, err
 	}
 
-	return tsk, nil
+	tskResult, err := getCompleteDataTsk(ctx, tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	return tskResult, nil
 }
 
 
@@ -407,7 +470,7 @@ func (s *TSKContract) GetTskById (ctx contractapi.TransactionContextInterface) (
 // Arguments - idSp
 // ============================================================================================================================
 
-func (t *TSKContract) GetTskByIdSp(ctx contractapi.TransactionContextInterface) ([]*Transkrip, error) {
+func (t *TSKContract) GetTskByIdSp(ctx contractapi.TransactionContextInterface) ([]*TranskripResult, error) {
 	args := ctx.GetStub().GetStringArgs()[1:]
 
 	logger.Infof("Run GetTskByIdSp function with args: %+q.", args)
@@ -420,7 +483,23 @@ func (t *TSKContract) GetTskByIdSp(ctx contractapi.TransactionContextInterface) 
 	idSp:= args[0]
 
 	queryString := fmt.Sprintf(`{"selector":{"idSp":"%s"}}`, idSp)
-	return getQueryResultForQueryString(ctx, queryString)
+	queryResult, err := getQueryResultForQueryString(ctx, queryString)
+	if err != nil {
+		return nil, err
+	}
+
+	var tskList []*TranskripResult
+
+	for _, tsk := range queryResult {
+		tskResult, err := getCompleteDataTsk(ctx, tsk)
+		if err != nil {
+			return nil, err
+		}
+
+		tskList = append(tskList, tskResult)
+	}
+
+	return tskList, nil
 }
 
 
@@ -429,7 +508,7 @@ func (t *TSKContract) GetTskByIdSp(ctx contractapi.TransactionContextInterface) 
 // Arguments - idSms
 // ============================================================================================================================
 
-func (t *TSKContract) GetTskByIdSms(ctx contractapi.TransactionContextInterface) ([]*Transkrip, error) {
+func (t *TSKContract) GetTskByIdSms(ctx contractapi.TransactionContextInterface) ([]*TranskripResult, error) {
 	args := ctx.GetStub().GetStringArgs()[1:]
 
 	logger.Infof("Run GetTskByIdSms function with args: %+q.", args)
@@ -442,7 +521,23 @@ func (t *TSKContract) GetTskByIdSms(ctx contractapi.TransactionContextInterface)
 	idSms:= args[0]
 
 	queryString := fmt.Sprintf(`{"selector":{"idSms":"%s"}}`, idSms)
-	return getQueryResultForQueryString(ctx, queryString)
+	queryResult, err := getQueryResultForQueryString(ctx, queryString)
+	if err != nil {
+		return nil, err
+	}
+
+	var tskList []*TranskripResult
+
+	for _, tsk := range queryResult {
+		tskResult, err := getCompleteDataTsk(ctx, tsk)
+		if err != nil {
+			return nil, err
+		}
+
+		tskList = append(tskList, tskResult)
+	}
+
+	return tskList, nil
 }
 
 
@@ -451,7 +546,7 @@ func (t *TSKContract) GetTskByIdSms(ctx contractapi.TransactionContextInterface)
 // Arguments - idPd
 // ============================================================================================================================
 
-func (t *TSKContract) GetTskByIdPd(ctx contractapi.TransactionContextInterface) ([]*Transkrip, error) {
+func (t *TSKContract) GetTskByIdPd(ctx contractapi.TransactionContextInterface) ([]*TranskripResult, error) {
 	args := ctx.GetStub().GetStringArgs()[1:]
 
 	logger.Infof("Run GetTskByIdPd function with args: %+q.", args)
@@ -464,7 +559,23 @@ func (t *TSKContract) GetTskByIdPd(ctx contractapi.TransactionContextInterface) 
 	idPd:= args[0]
 
 	queryString := fmt.Sprintf(`{"selector":{"idPd":"%s"}}`, idPd)
-	return getQueryResultForQueryString(ctx, queryString)
+	queryResult, err := getQueryResultForQueryString(ctx, queryString)
+	if err != nil {
+		return nil, err
+	}
+
+	var tskList []*TranskripResult
+
+	for _, tsk := range queryResult {
+		tskResult, err := getCompleteDataTsk(ctx, tsk)
+		if err != nil {
+			return nil, err
+		}
+
+		tskList = append(tskList, tskResult)
+	}
+
+	return tskList, nil
 }
 
 
@@ -583,6 +694,220 @@ func getSmsApproverTsk(ctx contractapi.TransactionContextInterface, idSms string
 	}
 
 	return sms.ApproversTSK, nil
+}
+
+
+// ============================================================================================================================
+// getSpById - Get SP with given idSp.
+// ============================================================================================================================
+
+func getSpById(ctx contractapi.TransactionContextInterface, idSp string) (*SatuanPendidikan, error) {
+	logger.Infof("Run getSpById function with idSp: '%s'.", idSp)
+
+	params := []string{"GetSpById", idSp}
+	queryArgs := make([][]byte, len(params))
+	for i, arg := range params {
+		queryArgs[i] = []byte(arg)
+	}
+
+	response := ctx.GetStub().InvokeChaincode(SPContract, queryArgs, AcademicChannel)
+	if response.Status != shim.OK {
+		return nil, fmt.Errorf(ER37, SPContract, response.Message)
+	}
+
+	var sp SatuanPendidikan
+	err := json.Unmarshal([]byte(response.Payload), &sp)
+	if err != nil {
+		return nil, fmt.Errorf(ER34, err)
+	}
+
+	return &sp, nil
+}
+
+
+// ============================================================================================================================
+// getSmsById - Get SMS with given idSms.
+// ============================================================================================================================
+
+func getSmsById(ctx contractapi.TransactionContextInterface, idSms string) (*SatuanManagemenSumberdaya, error) {
+	logger.Infof("Run getSmsById function with idSms: '%s'.", idSms)
+
+	params := []string{"GetSmsById", idSms}
+	queryArgs := make([][]byte, len(params))
+	for i, arg := range params {
+		queryArgs[i] = []byte(arg)
+	}
+
+	response := ctx.GetStub().InvokeChaincode(SMSContract, queryArgs, AcademicChannel)
+	if response.Status != shim.OK {
+		return nil, fmt.Errorf(ER37, SMSContract, response.Message)
+	}
+
+	var sms SatuanManagemenSumberdaya
+	err := json.Unmarshal([]byte(response.Payload), &sms)
+	if err != nil {
+		return nil, fmt.Errorf(ER34, err)
+	}
+
+	return &sms, nil
+}
+
+
+// ============================================================================================================================
+// getPtkById - Get PTK with given idPtk.
+// ============================================================================================================================
+
+func getPtkById(ctx contractapi.TransactionContextInterface, idPtk string) (*PendidikTenagaKependidikan, error) {
+	logger.Infof("Run getPtkById function with idPtk: '%s'.", idPtk)
+
+	params := []string{"GetPtkById", idPtk}
+	queryArgs := make([][]byte, len(params))
+	for i, arg := range params {
+		queryArgs[i] = []byte(arg)
+	}
+
+	response := ctx.GetStub().InvokeChaincode(PTKContract, queryArgs, AcademicChannel)
+	logger.Infof("Response Payload: '%+q'.", response.Payload)
+	if response.Status != shim.OK {
+		return nil, fmt.Errorf(ER37, PTKContract, response.Message)
+	}
+
+	var ptk PendidikTenagaKependidikan
+	err := json.Unmarshal([]byte(response.Payload), &ptk)
+	if err != nil {
+		return nil, fmt.Errorf(ER34, err)
+	}
+
+	return &ptk, nil
+}
+
+
+// ============================================================================================================================
+// getPdById - Get PD with given idPd.
+// ============================================================================================================================
+
+func getPdById(ctx contractapi.TransactionContextInterface, idPd string) (*PesertaDidik, error) {
+	logger.Infof("Run getPdById function with idPd: '%s'.", idPd)
+
+	params := []string{"GetPdById", idPd}
+	queryArgs := make([][]byte, len(params))
+	for i, arg := range params {
+		queryArgs[i] = []byte(arg)
+	}
+
+	response := ctx.GetStub().InvokeChaincode(PDContract, queryArgs, AcademicChannel)
+	if response.Status != shim.OK {
+		return nil, fmt.Errorf(ER37, PDContract, response.Message)
+	}
+
+	var pd PesertaDidik
+	err := json.Unmarshal([]byte(response.Payload), &pd)
+	if err != nil {
+		return nil, fmt.Errorf(ER34, err)
+	}
+
+	return &pd, nil
+}
+
+
+// ============================================================================================================================
+// getTskAddApprovalTxIdById - Get the Transkrip Mahasiswa (TSK) Approval Tx Id with given ID.
+// ============================================================================================================================
+
+func getTskAddApprovalTxIdById(ctx contractapi.TransactionContextInterface, id string) ([]string, error) {
+	logger.Infof("Run getTskAddApprovalTxIdById function with id: %s.", id)
+
+	resultsIterator, err := ctx.GetStub().GetHistoryForKey(id)
+	if err != nil {
+		return []string{}, fmt.Errorf(err.Error())
+	}
+	defer resultsIterator.Close()
+
+	txIdList := []string{}
+
+	for resultsIterator.HasNext() {
+		response, err := resultsIterator.Next()
+		if err != nil {
+			return []string{}, fmt.Errorf(err.Error())
+		}
+
+		var tsk Transkrip
+		err = json.Unmarshal([]byte(response.Value), &tsk)
+		if err != nil {
+			return nil, fmt.Errorf(ER34, err)
+		}
+
+		if (len(tsk.Approvers) == 0) {
+			break
+		}
+
+		txIdList = append([]string{response.TxId}, txIdList[0:]...)
+	}
+
+	return txIdList, nil
+}
+
+
+// ============================================================================================================================
+// getCompleteDataTsk - Get Complete the Transkrip Mahasiswa (TSK).
+// ============================================================================================================================
+
+func getCompleteDataTsk(ctx contractapi.TransactionContextInterface, tsk *Transkrip) (*TranskripResult, error) {
+	logger.Infof("Run getCompleteDataTsk function with tsk id: '%s'.", tsk.ID)
+
+	var tskResult TranskripResult
+
+	tskResult.ID 				= tsk.ID
+	tskResult.JenjangPendidikan = tsk.JenjangPendidikan
+	tskResult.TotalMutu 		= tsk.TotalMutu
+	tskResult.TotalSKS 			= tsk.TotalSKS
+	tskResult.IPK 				= tsk.IPK
+	tskResult.RemainingApprover = tsk.RemainingApprover
+
+	sp, err := getSpById(ctx, tsk.IdSP)
+	if err != nil {
+		return nil, err
+	}
+	tskResult.SP = sp
+
+	sms, err := getSmsById(ctx, tsk.IdSMS)
+	if err != nil {
+		return nil, err
+	}
+	sms.ApproversTSK = []string{}
+	sms.ApproversIJZ = []string{}
+	tskResult.SMS = sms
+
+	pd, err := getPdById(ctx, tsk.IdPD)
+	if err != nil {
+		return nil, err
+	}
+	tskResult.PD = pd
+
+	if len(tsk.Approvers) != 0 {
+		var listPtk []*PendidikTenagaKependidikan
+
+		for _, ptkId := range tsk.Approvers {
+			ptk, err := getPtkById(ctx, ptkId)
+			if err != nil {
+				return nil, err
+			}
+
+			listPtk = append(listPtk, ptk)
+		}
+
+		tskResult.Approvers = listPtk
+	} else {
+		tskResult.Approvers = []*PendidikTenagaKependidikan{}
+	}
+
+	approvalTxIds, err := getTskAddApprovalTxIdById(ctx, tsk.ID)
+	if err != nil {
+		return nil, err
+	}
+	tskResult.ApprovalTxId = approvalTxIds
+
+	return &tskResult, nil
 }
 
 
